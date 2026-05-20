@@ -1,0 +1,37 @@
+micronaut:
+  application:
+    name: policy-service
+  server:
+    port: 8085
+    context-path: /v1/policy
+  metrics:
+    enabled: true
+    export:
+      prometheus:
+        enabled: true
+
+endpoints:
+  health:
+    enabled: true
+    sensitive: false
+  metrics:
+    enabled: false
+  prometheus:
+    enabled: true
+    sensitive: false
+    path: metrics
+
+datasources:
+  default:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:policy}
+    username: ${DB_USER:policy}
+    password: ${DB_PASSWORD:policy}
+    driver-class-name: org.postgresql.Driver
+
+flyway:
+  datasources:
+    default:
+      enabled: true
+
+policy-service:
+  internal-api-key: ${POLICY_INTERNAL_API_KEY:dev-internal-key}

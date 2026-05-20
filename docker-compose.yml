@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: policy
+      POSTGRES_PASSWORD: policy
+      POSTGRES_DB: policy
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U policy"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  policy:
+    build: .
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: policy
+      DB_USER: policy
+      DB_PASSWORD: policy
+      POLICY_INTERNAL_API_KEY: dev-internal-key
+    depends_on:
+      postgres:
+        condition: service_healthy
