@@ -13,7 +13,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 
 @Controller("/internal")
-public final class InternalController {
+public class InternalController {
 
     private final InstallPackService installPack;
 
