@@ -3,9 +3,10 @@ package com.couragegang.policy.service;
 import com.couragegang.policy.api.dto.PolicyModels.ApplyInstallPackRequest;
 import com.couragegang.policy.api.dto.PolicyModels.ApplyInstallPackResponse;
 import com.couragegang.policy.repo.PolicyRuleRepository;
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.inject.Singleton;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Singleton
@@ -25,12 +26,17 @@ public final class InstallPackService {
             }
             var groupId = rules.insertGroup();
             var created = 0;
-            var packRules = req.pack().path("rules");
-            if (packRules.isArray()) {
-                for (var node : packRules) {
+            var packRules = req.pack().get("rules");
+            if (packRules instanceof List<?> list) {
+                for (var item : list) {
+                    if (!(item instanceof Map<?, ?> raw)) {
+                        continue;
+                    }
+                    @SuppressWarnings("unchecked")
+                    var node = (Map<String, Object>) raw;
                     var effect = text(node, "effect");
                     var pattern = text(node, "resource_pattern");
-                    var priority = node.path("priority").asInt(100);
+                    var priority = priority(node);
                     var ruleId =
                             rules.insertRule(
                                     req.orgId(),
@@ -59,11 +65,19 @@ public final class InstallPackService {
         }
     }
 
-    private static String text(JsonNode node, String field) {
-        var v = node.path(field);
-        if (v.isMissingNode() || v.isNull()) {
+    private static String text(Map<String, Object> node, String field) {
+        var v = node.get(field);
+        if (v == null) {
             throw new IllegalArgumentException("pack rule missing " + field);
         }
-        return v.asText();
+        return v.toString();
+    }
+
+    private static int priority(Map<String, Object> node) {
+        var v = node.get("priority");
+        if (v instanceof Number n) {
+            return n.intValue();
+        }
+        return 100;
     }
 }

@@ -1,8 +1,8 @@
 package com.couragegang.policy.api.dto;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.micronaut.serde.annotation.Serdeable;
 import jakarta.validation.constraints.NotNull;
+import java.util.Map;
 import java.util.UUID;
 
 public final class PolicyModels {
@@ -15,7 +15,7 @@ public final class PolicyModels {
             @NotNull UUID workspaceId,
             @NotNull String connectorKey,
             int policyPackVersion,
-            @NotNull JsonNode pack,
+            @NotNull Map<String, Object> pack,
             UUID installedByUserId) {}
 
     @Serdeable
