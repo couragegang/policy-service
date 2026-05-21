@@ -12,6 +12,8 @@ public final class HealthInfoController {
         return Map.of(
                 "service", "policy-service",
                 "health", "/v1/policy/health",
-                "internal", "/v1/policy/internal/installations/{id}/apply-pack");
+                "internal", "/v1/policy/internal/installations/{id}/apply-pack",
+                "rules", "/v1/policy/orgs/{orgId}/rules",
+                "pending", "/v1/policy/orgs/{orgId}/pending-approvals");
     }
 }
