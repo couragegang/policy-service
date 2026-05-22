@@ -1,6 +1,7 @@
 package com.couragegang.policy.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,7 @@ import com.couragegang.policy.api.dto.PolicyModels.CreatePendingRequest;
 import com.couragegang.policy.api.dto.PolicyModels.EvaluateRequest;
 import com.couragegang.policy.repo.PolicyRuleRepository;
 import com.couragegang.policy.repo.PolicyRuleRow;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -60,6 +62,29 @@ class PolicyEvaluateServiceTest {
     }
 
     @Test
+    void evaluateAllowReadEffect() throws Exception {
+        var ruleId = UUID.randomUUID();
+        when(rules.listForWorkspace(orgId, wsId))
+                .thenReturn(List.of(new PolicyRuleRow(ruleId, orgId, "allow_read", "mcp:notion:*:read", 1, "p", null, "notion")));
+
+        var res = svc.evaluate(new EvaluateRequest(orgId, wsId, "notion", "read_tool", Map.of(), userId, null));
+
+        assertThat(res.decision()).isEqualTo("allow");
+        assertThat(res.matchedRuleId()).isEqualTo(ruleId);
+    }
+
+    @Test
+    void evaluateUnknownEffectDefaultsToAllow() throws Exception {
+        var ruleId = UUID.randomUUID();
+        when(rules.listForWorkspace(orgId, wsId))
+                .thenReturn(List.of(new PolicyRuleRow(ruleId, orgId, "custom_effect", "tool:foo", 1, "p", null, "notion")));
+
+        var res = svc.evaluate(new EvaluateRequest(orgId, wsId, "notion", "foo", Map.of(), userId, null));
+
+        assertThat(res.decision()).isEqualTo("allow");
+    }
+
+    @Test
     void evaluateRequireApprovalCreatesPending() throws Exception {
         var ruleId = UUID.randomUUID();
         var pendingId = UUID.randomUUID();
@@ -87,5 +112,13 @@ class PolicyEvaluateServiceTest {
         var res = svc.evaluate(new EvaluateRequest(orgId, wsId, "notion", "notion_write_page", Map.of(), userId, null));
 
         assertThat(res.decision()).isEqualTo("allow");
+    }
+
+    @Test
+    void evaluateWrapsSqlException() throws Exception {
+        when(rules.listForWorkspace(orgId, wsId)).thenThrow(new SQLException("db"));
+
+        assertThatThrownBy(() -> svc.evaluate(new EvaluateRequest(orgId, wsId, "notion", "t", null, null, null)))
+                .isInstanceOf(IllegalStateException.class);
     }
 }

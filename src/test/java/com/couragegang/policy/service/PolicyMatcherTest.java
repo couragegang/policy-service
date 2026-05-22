@@ -31,6 +31,12 @@ class PolicyMatcherTest {
     }
 
     @Test
+    void matchesShortPattern() {
+        var r = rule("allow", "mcp", "notion");
+        assertThat(PolicyMatcher.matches(r, "notion", "t", false)).isFalse();
+    }
+
+    @Test
     void matchesMcpWritePattern() {
         var r = rule("require_approval", "mcp:notion:*:write", "notion");
         assertThat(PolicyMatcher.matches(r, "notion", "notion_write_page", true)).isTrue();
@@ -46,9 +52,16 @@ class PolicyMatcherTest {
     }
 
     @Test
-    void matchesMcpWildcardConnector() {
-        var r = rule("allow_read", "mcp:notion:*:read", "notion");
-        assertThat(PolicyMatcher.matches(r, "notion", "x", false)).isTrue();
+    void matchesMcpSpecificToolSegment() {
+        var r = rule("allow", "mcp:notion:exact_tool", "notion");
+        assertThat(PolicyMatcher.matches(r, "notion", "exact_tool", false)).isTrue();
+        assertThat(PolicyMatcher.matches(r, "notion", "other", false)).isFalse();
+    }
+
+    @Test
+    void matchesMcpTwoSegmentPattern() {
+        var r = rule("allow", "mcp:notion", "notion");
+        assertThat(PolicyMatcher.matches(r, "notion", "any", false)).isTrue();
     }
 
     @Test
