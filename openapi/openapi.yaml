@@ -1,0 +1,163 @@
+openapi: 3.1.0
+info:
+  title: Policy Service API
+  version: 0.1.0
+  description: |
+    Правила read/write/HITL. Internal apply-install-pack вызывается из mcp-gateway.
+    x-erd: cursor-context/docs/erd-and-bounded-contexts.md#6-bc-policy--hitl-policy-service-planned
+servers:
+  - url: http://localhost:8085/v1/policy
+    description: локально / platform compose
+tags:
+  - name: rules
+  - name: approvals
+  - name: internal
+paths:
+  /orgs/{orgId}/rules:
+    get:
+      tags: [rules]
+      summary: Policy Rules List
+      operationId: policyRulesList
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список правил
+  /orgs/{orgId}/pending-approvals:
+    get:
+      tags: [approvals]
+      summary: Policy Pending List
+      operationId: policyPendingList
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: workspace_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Очередь HITL
+  /internal/installations/{installationId}/apply-pack:
+    post:
+      tags: [internal]
+      summary: Синхронно из mcp-gateway при установке MCP
+      operationId: policyApplyInstallPack
+      security: []
+      parameters:
+        - name: installationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/PolicyInternalKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyInstallPackRequest'
+      responses:
+        '200':
+          description: Правила применены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplyInstallPackResponse'
+        '401':
+          description: Неверный internal key
+        '503':
+          description: Ошибка — mcp-gateway откатывает установку
+  /internal/installations/{installationId}/revoke-pack:
+    delete:
+      tags: [internal]
+      summary: При удалении MCP installation
+      operationId: policyRevokeInstallPack
+      security: []
+      parameters:
+        - name: installationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/PolicyInternalKey'
+      responses:
+        '204':
+          description: Правила сняты
+        '401':
+          description: Неверный internal key
+components:
+  parameters:
+    PolicyInternalKey:
+      name: X-Policy-Internal-Key
+      in: header
+      required: true
+      schema:
+        type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    ApplyInstallPackRequest:
+      type: object
+      required: [orgId, workspaceId, connectorKey, policyPackVersion, pack]
+      properties:
+        orgId:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        connectorKey:
+          type: string
+        policyPackVersion:
+          type: integer
+        pack:
+          type: object
+          description: policy_template_pack из mcp_catalog_tools
+          properties:
+            rules:
+              type: array
+              items:
+                $ref: '#/components/schemas/PolicyPackRule'
+        installedByUserId:
+          type: string
+          format: uuid
+    PolicyPackRule:
+      type: object
+      required: [effect, resource_pattern]
+      properties:
+        effect:
+          type: string
+          enum: [allow_read, allow_write, deny, require_approval]
+        resource_pattern:
+          type: string
+          example: mcp:notion:*:read
+        priority:
+          type: integer
+          default: 100
+    ApplyInstallPackResponse:
+      type: object
+      properties:
+        policyRuleGroupId:
+          type: string
+          format: uuid
+        rulesCreated:
+          type: integer
