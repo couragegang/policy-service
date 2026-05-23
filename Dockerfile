@@ -1,4 +1,7 @@
+ARG DEPLOY_CONTOUR=local
+
 FROM gradle:8.10.2-jdk21 AS build
+ARG DEPLOY_CONTOUR
 WORKDIR /app
 COPY gradle.properties settings.gradle.kts build.gradle.kts gradlew gradlew.bat ./
 COPY gradle ./gradle
@@ -7,8 +10,19 @@ RUN gradle --no-daemon shadowJar -x test \
     && JAR=$(ls build/libs/*-all.jar | head -n1) \
     && cp "$JAR" /app/policy-service.jar
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre-alpine AS runtime
+ARG DEPLOY_CONTOUR
+ENV DEPLOY_CONTOUR=${DEPLOY_CONTOUR}
+LABEL org.opencontainers.image.contour="${DEPLOY_CONTOUR}"
 WORKDIR /app
 COPY --from=build /app/policy-service.jar /app/policy-service.jar
 EXPOSE 8085
+
+FROM runtime AS baked
+COPY docker/entrypoint-baked.sh /entrypoint-baked.sh
+COPY docker/runtime-baked.env /app/config/runtime-baked.env
+RUN chmod +x /entrypoint-baked.sh
+ENTRYPOINT ["/entrypoint-baked.sh"]
+
+FROM runtime AS local
 ENTRYPOINT ["java", "-jar", "/app/policy-service.jar"]
